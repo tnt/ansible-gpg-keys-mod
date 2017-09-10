@@ -128,22 +128,23 @@ class GpgImport(object):
 
     def _execute_task(self):
         key_present = False
-        if self.key_type == 'public':
-            filekey = self._get_key_from_file()
-            if filekey:
-                # rerun the original setup with this key in the commands
-                self._setup_creds(filekey)
-                res = self._execute_command('check-public')
-                self._debug('checkpublic: %s' % (str(res)))
-                key_present = res['rc'] == 0
-        elif self.key_type == 'private':
-            filekey = self._get_key_from_file()
-            if filekey:
-                # rerun the original setup with this key in the commands
-                self._setup_creds(filekey)
-                res = self._execute_command('check-private')
-                self._debug('checkprivate: %s' % (str(res)))
-                key_present = res['rc'] == 0
+        if self.key_file:
+            if self.key_type == 'public':
+                filekey = self._get_key_from_file()
+                if filekey:
+                    # rerun the original setup with this key in the commands
+                    self._setup_creds(filekey)
+                    res = self._execute_command('check-public')
+                    self._debug('checkpublic: %s' % (str(res)))
+                    key_present = res['rc'] == 0
+            elif self.key_type == 'private':
+                filekey = self._get_key_from_file()
+                if filekey:
+                    # rerun the original setup with this key in the commands
+                    self._setup_creds(filekey)
+                    res = self._execute_command('check-private')
+                    self._debug('checkprivate: %s' % (str(res)))
+                    key_present = res['rc'] == 0
         else:
             res = self._execute_command('check')
             key_present = res['rc'] == 0

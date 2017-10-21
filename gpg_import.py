@@ -128,7 +128,10 @@ class GpgImport(object):
 
     def _execute_task(self):
         key_present = False
-        if self.key_type == 'public':
+        if self.key_id:
+            res = self._execute_command('check')
+            key_present = res['rc'] == 0
+        elif self.key_type == 'public':
             filekey = self._get_key_from_file()
             if filekey:
                 # rerun the original setup with this key in the commands
@@ -144,9 +147,6 @@ class GpgImport(object):
                 res = self._execute_command('check-private')
                 self._debug('checkprivate: %s' % (str(res)))
                 key_present = res['rc'] == 0
-        else:
-            res = self._execute_command('check')
-            key_present = res['rc'] == 0
 
         if key_present and self.state == 'absent':
             res = self._execute_command('delete')

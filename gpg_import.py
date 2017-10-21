@@ -18,19 +18,19 @@ description:
 options:
   key_id:
     description:
-      - The id of the key to be fetched and imported. Only applicable to private keys (for now). Either key_file or key_id is required.
+      - The id of the key to be fetched and imported. Only applicable to public keys. Either key_file or key_id is required.
     required: false
     default: null
 
   key_file:
     description:
-      - Filename of key to be imported. Must be on remote machine, not local. Only applicable to public keys (for now). Either key_file or key_id is required.
+      - Filename of key to be imported. Must be on remote machine, not local. Either key_file or key_id is required.
     required: false
     default: null
 
   key_type:
     description:
-      - What type of key to import.
+      - What type of key to import. Only applicable to key_file
     required: true
     choices: [ "private", "public" ]
     default: "private"
@@ -81,6 +81,12 @@ author: Thelonius Kort
 EXAMPLES = '''
 - name: Install GPG key
   gpg_import: key_id="0x3804BB82D39DC0E3" state=present
+
+- name: Install GPG key
+  gpg_import:
+    key_id: "0x3804BB82D39DC0E3"
+    bin_path: '/usr/local/bin/gpg'
+
 - name: Install or update GPG key
   gpg_import:
     key_id: "0x3804BB82D39DC0E3"
@@ -89,8 +95,14 @@ EXAMPLES = '''
       - 'hkp://no.way.ever'
       - 'keys.gnupg.net'
       - 'hkps://hkps.pool.sks-keyservers.net'
+
 - name: Install or fail with fake and not fake GPG keys
   gpg_import:
+    key_id: "{{ item }}"
+    tries: 2
+  with_items:
+    - "0x3804BB82D39DC0E3"
+    - "0x3804BB82D39DC0E4" # fake key fails
 
 - name: import a file-based public key
   gpg_import: key_type=public state=present key_file=/etc/customer-key/customer.pubkey

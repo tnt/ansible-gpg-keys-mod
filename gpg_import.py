@@ -18,19 +18,22 @@ description:
 options:
   key_id:
     description:
-      - The id of the key to be fetched and imported. Only applicable to private keys (for now). Either key_file or key_id is required.
+      - When attempting to fetch and import, the id of the key requested. When deleting a pre-existing 
+        key, this must be the fingerprint of the key to delete. Either key_file or key_id is required.
     required: false
     default: null
 
   key_file:
     description:
-      - Filename of key to be imported. Must be on remote machine, not local. Only applicable to public keys (for now). Either key_file or key_id is required.
+      - Filename of key to be imported. Must be on remote machine, not local. Either key_file or key_id is required.
+        Can also be used with delete, module will extract the fingerprint from the provided key file and
+        delete the matching key from the key-chain.
     required: false
     default: null
 
   key_type:
     description:
-      - What type of key to import.
+      - What type of key to import. Only applicable to key_file
     required: true
     choices: [ "private", "public" ]
     default: "private"
@@ -81,6 +84,12 @@ author: Thelonius Kort
 EXAMPLES = '''
 - name: Install GPG key
   gpg_import: key_id="0x3804BB82D39DC0E3" state=present
+
+- name: Install GPG key
+  gpg_import:
+    key_id: "0x3804BB82D39DC0E3"
+    bin_path: '/usr/local/bin/gpg'
+
 - name: Install or update GPG key
   gpg_import:
     key_id: "0x3804BB82D39DC0E3"
@@ -89,8 +98,14 @@ EXAMPLES = '''
       - 'hkp://no.way.ever'
       - 'keys.gnupg.net'
       - 'hkps://hkps.pool.sks-keyservers.net'
+
 - name: Install or fail with fake and not fake GPG keys
   gpg_import:
+    key_id: "{{ item }}"
+    tries: 2
+  with_items:
+    - "0x3804BB82D39DC0E3"
+    - "0x3804BB82D39DC0E4" # fake key fails
 
 - name: import a file-based public key
   gpg_import: key_type=public state=present key_file=/etc/customer-key/customer.pubkey
@@ -128,7 +143,10 @@ class GpgImport(object):
 
     def _execute_task(self):
         key_present = False
-        if self.key_type == 'public':
+        if self.key_id:
+            res = self._execute_command('check')
+            key_present = res['rc'] == 0
+        elif self.key_type == 'public':
             filekey = self._get_key_from_file()
             if filekey:
                 # rerun the original setup with this key in the commands
@@ -144,9 +162,6 @@ class GpgImport(object):
                 res = self._execute_command('check-private')
                 self._debug('checkprivate: %s' % (str(res)))
                 key_present = res['rc'] == 0
-        else:
-            res = self._execute_command('check')
-            key_present = res['rc'] == 0
 
         if key_present and self.state == 'absent':
             res = self._execute_command('delete')
@@ -184,12 +199,12 @@ class GpgImport(object):
             self.key_id = key_override
         self.commands = {
             'check':   '{bin_path} {check_mode} --list-keys {key_id}',
-            'delete':  '{bin_path} {check_mode} --batch --yes --delete-keys {key_id}',
+            'delete':  '{bin_path} {check_mode} --batch --yes --delete-secret-and-public-keys {key_id}',
             'refresh': '{bin_path} {check_mode} --keyserver {url} --keyserver-options timeout={timeout} --refresh-keys {key_id}',
             'check-private':  '{bin_path} {check_mode} --list-secret-keys {key_id}',
             'recv':    '{bin_path} {check_mode} --keyserver {url} --keyserver-options timeout={timeout} --recv-keys {key_id}',
             'check-public':  '{bin_path} {check_mode} --list-public-keys {key_id}',
-            'import-key': '{bin_path} {check_mode} --import {key_file}'
+            'import-key': '{bin_path} {check_mode} --batch --import {key_file}'
         }
         command_data = {
             'check_mode': '--dry-run' if self.m.check_mode else '',
@@ -237,16 +252,15 @@ class GpgImport(object):
         return rdic
 
     def _get_key_from_file(self):
-        keycmd = '%s --dry-run --import %s'
+        keycmd = '%s --with-colons --with-fingerprint %s'
         bp = self.m.get_bin_path(self.bin_path, True)
         print(bp, self.key_file)
         keycmd_expanded = keycmd % (bp, self.key_file)
         self.changed = False
         raw_res = self.m.run_command(keycmd_expanded)
-        keyinfo = raw_res[2]
+        keyinfo = raw_res[1]
         self._debug('keyinfo: %s' % (str(keyinfo)))
-        # keyinfo: gpg: key 32382FA0: \"Pau
-        keysearch = re.match(r'gpg:\s+key\s+([0-9A-F]+):', keyinfo)
+        keysearch = re.search(r'fpr:{9}([0-9A-F]{40}):', keyinfo, re.MULTILINE)
 
         if keysearch and keysearch.group(1):
             self._debug('keysearch groups: %s' % (str(keysearch.groups())))

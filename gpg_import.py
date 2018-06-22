@@ -183,19 +183,20 @@ class GpgImport(object):
         if key_override:
             self.key_id = key_override
         self.commands = {
-            'check':   '{bin_path} {check_mode} --list-keys {key_id}',
-            'delete':  '{bin_path} {check_mode} --batch --yes --delete-keys {key_id}',
-            'refresh': '{bin_path} {check_mode} --keyserver {url} --keyserver-options timeout={timeout} --refresh-keys {key_id}',
-            'check-private':  '{bin_path} {check_mode} --list-secret-keys {key_id}',
-            'recv':    '{bin_path} {check_mode} --keyserver {url} --keyserver-options timeout={timeout} --recv-keys {key_id}',
-            'check-public':  '{bin_path} {check_mode} --list-public-keys {key_id}',
-            'import-key': '{bin_path} {check_mode} --import {key_file}'
+            'check':   '{bin_path} {extra_args} {check_mode} --list-keys {key_id}',
+            'delete':  '{bin_path} {extra_args} {check_mode} --batch --yes --delete-keys {key_id}',
+            'refresh': '{bin_path} {extra_args} {check_mode} --keyserver {url} --keyserver-options timeout={timeout} --refresh-keys {key_id}',
+            'check-private':  '{bin_path} {extra_args} {check_mode} --list-secret-keys {key_id}',
+            'recv':    '{bin_path} {extra_args} {check_mode} --keyserver {url} --keyserver-options timeout={timeout} --recv-keys {key_id}',
+            'check-public':  '{bin_path} {extra_args} {check_mode} --list-public-keys {key_id}',
+            'import-key': '{bin_path} {extra_args} {check_mode} --import {key_file}',
         }
         command_data = {
             'check_mode': '--dry-run' if self.m.check_mode else '',
             'bin_path': self.m.get_bin_path(self.bin_path, True),
             'key_id': self.key_id,
-            'key_file': self.key_file
+            'key_file': self.key_file,
+            'extra_args': self.extra_args,
         }
         # sort of a brilliant way of late-binding/double-formatting given here: http://stackoverflow.com/a/17215533/659298
         for c,l in self.commands.items():
@@ -264,7 +265,8 @@ def main():
             delay=dict(default=0.5, type='float'),
             state=dict(default='present', choices=['latest', 'refreshed', 'absent', 'present']),
             key_type=dict(default='private', choices=['private', 'public']),
-            gpg_timeout=dict(default=5, type='int')
+            gpg_timeout=dict(default=5, type='int'),
+            extra_args=dict(required=False, default='', type='str')
         ),
         supports_check_mode=True,
         required_one_of=[['key_id', 'key_file']]

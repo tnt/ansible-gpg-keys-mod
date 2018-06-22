@@ -51,5 +51,6 @@ tries        |   3                | number of attempts per *server*
 delay        |  0.5               | delay between retries
 gpg_timeout  | 5                  | `gpg --keyserver-options timeout=5 ...`
 bin_path     | /usr/bin/gpg       | Location of gpg binary
+gpg_arg      |                    | Argument string passed to gpg command
 
 [Strange behaviors](https://gist.github.com/tnt/eedaed9a6cc75130b9cb) occur when used with [insane keys](https://gist.github.com/tnt/70b116c72be11dc3cc66). But this is a gpg-problem.

@@ -195,7 +195,7 @@ class GpgImport(object):
             'check_mode': '--dry-run' if self.m.check_mode else '',
             'bin_path': self.m.get_bin_path(self.bin_path, True),
             'key_id': self.key_id,
-            'key_file': self.key_file
+            'key_file': self.key_file,
         }
         # sort of a brilliant way of late-binding/double-formatting given here: http://stackoverflow.com/a/17215533/659298
         for c,l in self.commands.items():
@@ -264,7 +264,7 @@ def main():
             delay=dict(default=0.5, type='float'),
             state=dict(default='present', choices=['latest', 'refreshed', 'absent', 'present']),
             key_type=dict(default='private', choices=['private', 'public']),
-            gpg_timeout=dict(default=5, type='int')
+            gpg_timeout=dict(default=5, type='int'),
         ),
         supports_check_mode=True,
         required_one_of=[['key_id', 'key_file']]
